@@ -16,11 +16,15 @@ class EDA:
     def missing_values(self):
         # Show missing values
         print(self.df.isnull().sum())
-
-    # def correlation_heatmap_num_att(self):
-    #     num_col = self.df.select_dtypes(include=['float64', 'int64']).columns
-    #     corr_matric = num_col.corr()
-    #     plt.figure(figsize=(10,8))
-    #     plt.title('correlation')
-    #     sns.heatmap(corr_matric, annot = True)
-    #     plt.show()
+    def top_ten_handset(self):
+        top_count = self.df['Handset Type'].value_counts().head(10)
+        return top_count
+    def plot_bar(self):
+        top_count = self.df['Handset Type'].value_counts().nlargest(10)
+        plt.figure(figsize=(10,6))
+        sns.barplot(x=top_count.index, y=top_count.values)
+        plt.title("Top Ten Handset_Type used")
+        plt.xlabel('Handset_Type')
+        plt.ylabel('Count')
+        plt.xticks(rotation=45, ha='right')
+        plt.show()
