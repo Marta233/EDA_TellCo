@@ -214,10 +214,50 @@ class EDA:
         plt.ylabel('Frequency')
         plt.show()
     def outlier_check(self):
+        # Filter for numeric columns
+        numeric_df = self.df.select_dtypes(include=[float, int])
+
+        # Ensure there is at least one numeric column
+        if numeric_df.empty:
+            raise ValueError("No numeric columns available for outlier detection.")
+
         # Identify outliers using IQR method
-        Q1 = self.df.quantile(0.25)
-        Q3 = self.df.quantile(0.75)
+        Q1 = numeric_df.quantile(0.25)
+        Q3 = numeric_df.quantile(0.75)
         IQR = Q3 - Q1
-        outliers = ((self.df < (Q1 - 1.5 * IQR)) | (self.df > (Q3 + 1.5 * IQR))).any(axis=1)
+
+        # Calculate outliers for each column
+        outliers = (numeric_df < (Q1 - 1.5 * IQR)) | (numeric_df > (Q3 + 1.5 * IQR))
+        
+        # Return the count of outliers for each column
         return outliers.sum()
-    
+    def outlier_check_perc(self):
+        # Filter for numeric columns
+        numeric_df = self.df.select_dtypes(include=[float, int])
+
+        # Ensure there is at least one numeric column
+        if numeric_df.empty:
+            raise ValueError("No numeric columns available for outlier detection.")
+
+        # Identify outliers using IQR method
+        Q1 = numeric_df.quantile(0.25)
+        Q3 = numeric_df.quantile(0.75)
+        IQR = Q3 - Q1
+
+        # Calculate outliers for each column
+        outliers = (numeric_df < (Q1 - 1.5 * IQR)) | (numeric_df > (Q3 + 1.5 * IQR))
+        
+        # Count total values per column and calculate percentage of outliers
+        total_values = numeric_df.count()  # Non-NaN values in each column
+        outlier_percentage = (outliers.sum() / total_values) * 100
+        
+        # Create a DataFrame for outlier percentages
+        missing_df = pd.DataFrame({
+            'Column': numeric_df.columns,  # Use numeric_df.columns instead of self.df.columns
+            'outlier_percentage': outlier_percentage
+        }).sort_values(by='outlier_percentage', ascending=False)  # Fix typo
+        
+        return missing_df
+
+
+
