@@ -4,27 +4,65 @@ import seaborn as sns
 class EDA:
     def __init__(self, df: pd.DataFrame):
         self.df = df
+    def remove_columns(self):
+        # List of columns to be dropped, removing duplicates
+        columns_to_drop = list(set([
+            'Nb of sec with 37500B < Vol UL',
+       'Nb of sec with 6250B < Vol UL < 37500B', 'Nb of sec with 125000B < Vol DL',
+       'TCP UL Retrans. Vol (Bytes)', 'Nb of sec with 31250B < Vol DL < 125000B',
+       'Nb of sec with 1250B < Vol UL < 6250B', 'Nb of sec with 6250B < Vol DL < 31250B',
+       'TCP DL Retrans. Vol (Bytes)', 'HTTP UL (Bytes)',
+       'HTTP DL (Bytes)', 'Avg RTT DL (ms)',
+       'Avg RTT UL (ms)', 'Last Location Name','Nb of sec with 125000B < Vol DL',
+        ]))
+        
+        # Check which columns are actually in the DataFrame
+        existing_columns = self.df.columns
+        missing_columns = [col for col in columns_to_drop if col not in existing_columns]
+        
+        if missing_columns:
+            print(f"Warning: The following columns were not found and will not be dropped: {missing_columns}")
+        
+        # Drop columns if they exist
+        self.df = self.df.drop(columns=[col for col in columns_to_drop if col in existing_columns])
+        
+        return self.df
 
     def basic_info(self):
+        # Set display options to show more columns
+        pd.set_option('display.max_columns', None)  # None means no limit
         # Show basic information about the data
         print(self.df.info())
-
+    def basic_info1(self):
+        # Show basic information about the data
+        self.remove_columns()
+        self.df.info()
     def summary_statistics(self):
         # Display summary statistics
         print(self.df.describe())
-
     def missing_values(self):
-        # Show missing values
-        pd.set_option('display.max_columns', None)  # Show all columns
-        pd.set_option('display.width', None)  # Prevent line wrapping
         print(self.df.isnull().sum())
-        # Reset display options to default if needed
-        pd.reset_option('display.max_columns')
-        pd.reset_option('display.width')
+    def missing_percentage(self):
+    # Calculate the percentage of missing values
+        missing_percent = self.df.isnull().sum() / len(self.df) * 100
+        
+        # Create a DataFrame to display the results nicely
+        missing_df = pd.DataFrame({
+            'Column': self.df.columns,
+            'Missing Percentage': missing_percent
+        }).sort_values(by='Missing Percentage', ascending=False)
+        
+        return missing_df
+    def remove_null_spe_col(self):
+        self.df = self.df.dropna(subset=['Handset Type', 'Handset Manufacturer'])
+    def data_types(self):
+        print(self.df.dtypes)
     def top_ten_handset(self):
+        self.remove_null_spe_col()
         top_count = self.df['Handset Type'].value_counts().head(10)
         return top_count
     def plot_bar(self):
+        self.remove_null_spe_col()
         top_count = self.df['Handset Type'].value_counts().nlargest(10)
         plt.figure(figsize=(10,6))
         sns.barplot(x=top_count.index, y=top_count.values)
@@ -34,10 +72,12 @@ class EDA:
         plt.xticks(rotation=45, ha='right')
         plt.show()
     def top_manufacturere_by_handsetnum(self):
+       self.remove_null_spe_col()
        hand_grou = self.df.groupby(['Handset Type', 'Handset Manufacturer']).size().reset_index(name='Count')
        top_count = hand_grou.groupby('Handset Manufacturer')['Handset Type'].count().nlargest(3)
        return top_count
     def plot_top_manufacturere_by_handsetnum(self):
+        self.remove_null_spe_col()
         hand_grou = self.df.groupby(['Handset Type', 'Handset Manufacturer']).size().reset_index(name='Count')
         top_count = hand_grou.groupby('Handset Manufacturer')['Handset Type'].count().nlargest(3)
         plt.figure(figsize=(10, 6))
@@ -46,9 +86,11 @@ class EDA:
         plt.xlabel('Handset Manufacturee')
         plt.ylabel('count')
     def top_ten_handset_by_manufacturer(self):
+        self.remove_null_spe_col()
         top_count = self.df.groupby('Handset Manufacturer')['Handset Type'].count().nlargest(3)
         return top_count
     def plot_top_ten_handset_by_manufacturer(self):
+        self.remove_null_spe_col()
         top_count = self.df.groupby('Handset Manufacturer')['Handset Type'].count().nlargest(3)
         plt.figure(figsize=(10, 6))
         sns.barplot(x=top_count.index, y=top_count.values)
@@ -56,12 +98,14 @@ class EDA:
         plt.xlabel('Handset Manufacturee')
         plt.ylabel('count')
     def top_5_handsets_per_top_3_handset_manufacturer(self):
+        self.remove_null_spe_col()
         top_count = self.df.groupby('Handset Manufacturer')['Handset Type'].count().nlargest(3).index
         top_5_handsets = self.df[self.df['Handset Manufacturer'].isin(top_count)].groupby(
             ['Handset Manufacturer', 'Handset Type']).size().groupby('Handset Manufacturer', group_keys=False).nlargest(
             5)
         return top_5_handsets
     def plot_top_5_handsets_per_top_3_handset_manufacturer(self):
+        self.remove_null_spe_col()
         # Get the top 3 handset manufacturers based on the number of handsets
         top_count = self.df.groupby('Handset Manufacturer')['Handset Type'].count().nlargest(3).index
         
@@ -93,7 +137,7 @@ class EDA:
         required_columns = [
             'IMSI',  # or MSISDN/Number for user identification
             'Dur. (ms)',
-            'HTTP DL (Bytes)', 'HTTP UL (Bytes)',
+            # 'HTTP DL (Bytes)', 'HTTP UL (Bytes)',
             'Social Media DL (Bytes)', 'Social Media UL (Bytes)',
             'Netflix DL (Bytes)', 'Netflix UL (Bytes)',
             'Google DL (Bytes)', 'Google UL (Bytes)',
@@ -113,8 +157,8 @@ class EDA:
             total_session_duration=('Dur. (ms)', 'sum'),
             total_DL_data=('Total DL (Bytes)', 'sum'),
             total_UL_data=('Total UL (Bytes)', 'sum'),
-            total_HTTP_DL=('HTTP DL (Bytes)', 'sum'),
-            total_HTTP_UL=('HTTP UL (Bytes)', 'sum'),
+            # total_HTTP_DL=('HTTP DL (Bytes)', 'sum'),
+            # total_HTTP_UL=('HTTP UL (Bytes)', 'sum'),
             total_Social_Media_DL=('Social Media DL (Bytes)', 'sum'),
             total_Social_Media_UL=('Social Media UL (Bytes)', 'sum'),
             total_Netflix_DL=('Netflix DL (Bytes)', 'sum'),
@@ -130,4 +174,50 @@ class EDA:
         ).reset_index()
 
         return aggregated_data
+    def plot_insights(self):
+        # Plot total data usage
+        aggregated_data = self.aggregate_user_behavior()
+        plt.figure(figsize=(12, 8))
+        sns.histplot(aggregated_data['total_DL_data'], kde=True, color='blue')
+        plt.title('Distribution of Total Download Data (Bytes)')
+        plt.xlabel('Total Download Data (Bytes)')
+        plt.ylabel('Frequency')
+        plt.show()
+    def plot_insight1(self):
+        aggregated_data = self.aggregate_user_behavior()
+        # Plot total session duration
+        plt.figure(figsize=(12, 8))
+        sns.histplot(aggregated_data['total_session_duration'], kde=True, color='green')
+        plt.title('Distribution of Total Session Duration (ms)')
+        plt.xlabel('Total Session Duration (ms)')
+        plt.ylabel('Frequency')
+        plt.show()
+    def plot_insight3(self):
+        # Plot top sources of data usage
+        aggregated_data = self.aggregate_user_behavior()
+        usage_columns = [
+            'total_Social_Media_DL', 'total_Netflix_DL', 'total_Google_DL', 'total_Email_DL', 'total_Gaming_DL', 'Youtube_Gaming_DL'
+        ]
+        plt.figure(figsize=(14, 8))
+        aggregated_data[usage_columns].sum().sort_values().plot(kind='barh', color='skyblue')
+        plt.title('Total Data Usage by Source (Bytes)')
+        plt.xlabel('Total Data Usage (Bytes)')
+        plt.ylabel('Data Source')
+        plt.show()
+    def plot_insight4(self):
+        aggregated_data = self.aggregate_user_behavior()
+        # Plot number of sessions
+        plt.figure(figsize=(12, 8))
+        sns.histplot(aggregated_data['number_of_xDR_sessions'], kde=True, color='orange')
+        plt.title('Distribution of Number of Sessions per User')
+        plt.xlabel('Number of Sessions')
+        plt.ylabel('Frequency')
+        plt.show()
+    def outlier_check(self):
+        # Identify outliers using IQR method
+        Q1 = self.df.quantile(0.25)
+        Q3 = self.df.quantile(0.75)
+        IQR = Q3 - Q1
+        outliers = ((self.df < (Q1 - 1.5 * IQR)) | (self.df > (Q3 + 1.5 * IQR))).any(axis=1)
+        return outliers.sum()
     
