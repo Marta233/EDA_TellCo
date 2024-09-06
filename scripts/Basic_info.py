@@ -56,7 +56,13 @@ class EDA:
     def remove_null_spe_col(self):
         self.df = self.df.dropna(subset=['Handset Type', 'Handset Manufacturer'])
     def data_types(self):
-        print(self.df.dtypes)
+        data_typs = self.df.dtypes
+         # Create a DataFrame for outlier percentages
+        missing_df = pd.DataFrame({
+            'Column': self.df.columns,  # Use numeric_df.columns instead of self.df.columns
+            'data_typs': data_typs
+        }).sort_values(by='data_typs', ascending=False)  # Fix typo
+        return missing_df
     def top_ten_handset(self):
         self.remove_null_spe_col()
         top_count = self.df['Handset Type'].value_counts().head(10)
@@ -258,6 +264,12 @@ class EDA:
         }).sort_values(by='outlier_percentage', ascending=False)  # Fix typo
         
         return missing_df
+    def stast_some_col(self):
+        print('Mean',self.df['Dur. (ms)'].mean())
+        print('Mode',self.df['Dur. (ms)'].mode())
+        print('median', self.df['Dur. (ms)'].median())
+        print('std',self.df['Dur. (ms)'].std())
+
 
 
 
