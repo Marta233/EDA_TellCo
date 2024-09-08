@@ -3,35 +3,74 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-
 class User_Overview:
     def __init__(self, df: pd.DataFrame):
         self.df = df
-    def User_seg(self):
-        # Calculate total session duration and total data (DL + UL) per user
+    def remove_outliers(self):
+        # Drop rows where 'IMSI' or 'Dur. (ms)' is NaN
+        self.df.dropna(subset=['IMSI', 'Dur. (ms)'], inplace=True)
+
+        # Extract the IMSI column for outlier identification based on another metric
+        imsi_col = self.df['IMSI']
+        duration_col = self.df['Dur. (ms)']
+
+        # Calculate Q1, Q3, and IQR for 'Dur. (ms)' to find outliers
+        Q1 = duration_col.quantile(0.25)
+        Q3 = duration_col.quantile(0.75)
+        IQR = Q3 - Q1
+
+        # Define outlier bounds
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+
+        # Identify outliers in 'Dur. (ms)' column
+        outlier_mask = (duration_col < lower_bound) | (duration_col > upper_bound)
+        outlier_imsi = self.df[outlier_mask]['IMSI']
+
+        # Remove outliers based on IMSI
+        df_cleaned = self.df[~self.df['IMSI'].isin(outlier_imsi)]
+
+        # Display the cleaned DataFrame
+        return df_cleaned
+    def segment_and_compute_data(self):
         # Drop rows with missing values
         self.df.dropna(subset=['Dur. (ms)', 'Total DL (Bytes)', 'Total UL (Bytes)'], inplace=True)
-
-        user_data = self.df.groupby('IMSI').agg(
+        self.remove_outliers()  
+        user_aggregated = self.df.groupby('IMSI').agg(
             total_duration=('Dur. (ms)', 'sum'),
             total_DL=('Total DL (Bytes)', 'sum'),
             total_UL=('Total UL (Bytes)', 'sum')
         ).reset_index()
 
-        # Calculate total data (DL + UL) for each user
-        user_data['Total Data (Bytes)'] = user_data['total_DL'] + user_data['total_UL']
+        # Step 2: Calculate deciles
+        user_aggregated['Decile'] = pd.qcut(user_aggregated['total_duration'], 10, labels=False) + 1
 
-        # Segment users into deciles based on total session duration
-        user_data['Decile'] = pd.qcut(user_data['total_duration'], 10, labels=False)
+        # Step 3: Focus on the top 5 deciles
+        top_five_deciles = user_aggregated[user_aggregated['Decile'] > 5]
 
-        return user_data
-    def plot_insights(self):
-        user_data = self.User_seg()
-        plt.figure(figsize=(12, 8))
-        sns.barplot(x='Decile', y='Total Data (Bytes)', data=user_data, color='skyblue')
-        plt.title('Total Data Usage by Decile of Users')
-        plt.xlabel('Decile')
-        plt.ylabel('Total Data (Bytes)')
+        # Step 4: Compute total data per decile
+        decile_data = top_five_deciles.groupby('Decile').agg(
+            total_users=('IMSI', 'count'),
+            total_DL=('total_DL', 'sum'),
+            total_UL=('total_UL', 'sum')
+        ).reset_index()
+
+       # Plot the data
+        fig, axes = plt.subplots(1, 2, figsize=(14, 7))
+
+        # Plot Total DL
+        sns.barplot(x='Decile', y='total_DL', data=decile_data, color='skyblue', ax=axes[0])
+        axes[0].set_xlabel('Decile')
+        axes[0].set_ylabel('Total DL (Bytes)')
+        axes[0].set_title('Total Data Usage (DL) by Decile (Top 5)', fontsize=14, loc='center')
+        
+        # Plot Total UL
+        sns.barplot(x='Decile', y='total_UL', data=decile_data, color='salmon', ax=axes[1])
+        axes[1].set_xlabel('Decile')
+        axes[1].set_ylabel('Total UL (Bytes)')
+        axes[1].set_title('Total Data Usage (UL) by Decile (Top 5)', fontsize=14, loc='center')
+
+        plt.tight_layout()
         plt.show()
     def non_graphical_univariate_analysis(self):
         # List of quantitative columns to analyze
@@ -105,26 +144,7 @@ class User_Overview:
             plt.show()
             
             return pca.explained_variance_ratio_
-    def calculate_engagement_metrics(self):
-        # Calculate session frequency per user
-        session_freq = self.df.groupby('IMSI').size().reset_index(name='Session Frequency')
-        
-        # Calculate total session duration per user
-        total_duration = self.df.groupby('IMSI')['Dur. (ms)'].sum().reset_index(name='Total Duration (ms)')
-        
-        # Calculate total data (DL + UL) per user
-        total_traffic = self.df.groupby('IMSI').agg(
-            total_DL=('Total DL (Bytes)', 'sum'),
-            total_UL=('Total UL (Bytes)', 'sum')
-        ).reset_index()
-        
-        total_traffic['Total Traffic (Bytes)'] = total_traffic['total_DL'] + total_traffic['total_UL']
-        
-        # Merge all engagement metrics into one DataFrame
-        engagement_metrics = session_freq.merge(total_duration, on='IMSI').merge(total_traffic[['IMSI', 'Total Traffic (Bytes)']], on='IMSI')
-        
-        return engagement_metrics
-
+   
 
 
 

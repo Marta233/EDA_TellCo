@@ -7,13 +7,7 @@ class EDA:
     def remove_columns(self):
         # List of columns to be dropped, removing duplicates
         columns_to_drop = list(set([
-            'Nb of sec with 37500B < Vol UL',
-       'Nb of sec with 6250B < Vol UL < 37500B', 'Nb of sec with 125000B < Vol DL',
-       'TCP UL Retrans. Vol (Bytes)', 'Nb of sec with 31250B < Vol DL < 125000B',
-       'Nb of sec with 1250B < Vol UL < 6250B', 'Nb of sec with 6250B < Vol DL < 31250B',
-       'TCP DL Retrans. Vol (Bytes)', 'HTTP UL (Bytes)',
-       'HTTP DL (Bytes)', 'Avg RTT DL (ms)',
-       'Avg RTT UL (ms)', 'Last Location Name','Nb of sec with 125000B < Vol DL',
+            'Nb of sec with 37500B < Vol UL','Nb of sec with 6250B < Vol UL < 37500B', 'Nb of sec with 125000B < Vol DL','TCP UL Retrans. Vol (Bytes)', 'Nb of sec with 31250B < Vol DL < 125000B','Nb of sec with 1250B < Vol UL < 6250B', 'Nb of sec with 6250B < Vol DL < 31250B','TCP DL Retrans. Vol (Bytes)', 'HTTP UL (Bytes)','HTTP DL (Bytes)','Avg RTT DL (ms)','Avg RTT UL (ms)','Last Location Name','Nb of sec with 125000B < Vol DL',
         ]))
         
         # Check which columns are actually in the DataFrame
@@ -136,89 +130,6 @@ class EDA:
         plt.xticks(rotation=45, ha='right')
         plt.legend(title='Handset Manufacturer')
         plt.show()
-    def aggregate_user_behavior(self):
-        # Print existing columns for debugging
-        print("Existing columns:", self.df.columns.tolist())
-        
-        required_columns = [
-            'IMSI',  # or MSISDN/Number for user identification
-            'Dur. (ms)',
-            # 'HTTP DL (Bytes)', 'HTTP UL (Bytes)',
-            'Social Media DL (Bytes)', 'Social Media UL (Bytes)',
-            'Netflix DL (Bytes)', 'Netflix UL (Bytes)',
-            'Google DL (Bytes)', 'Google UL (Bytes)',
-            'Email DL (Bytes)', 'Email UL (Bytes)',
-            'Gaming DL (Bytes)', 'Gaming UL (Bytes)',
-            'Other DL (Bytes)', 'Other UL (Bytes)', 'Youtube DL (Bytes)', 'Youtube UL (Bytes)'
-        ]
-        
-        # # Check for missing columns
-        # missing_cols = [col for col in required_columns if col not in self.df.columns]
-        # if missing_cols:
-        #     raise ValueError(f"DataFrame is missing required columns: {missing_cols}")
-        
-        # Aggregate data per user
-        aggregated_data =self.df.groupby('IMSI').agg(
-            number_of_xDR_sessions=('Bearer Id', 'nunique'),
-            total_session_duration=('Dur. (ms)', 'sum'),
-            total_DL_data=('Total DL (Bytes)', 'sum'),
-            total_UL_data=('Total UL (Bytes)', 'sum'),
-            # total_HTTP_DL=('HTTP DL (Bytes)', 'sum'),
-            # total_HTTP_UL=('HTTP UL (Bytes)', 'sum'),
-            total_Social_Media_DL=('Social Media DL (Bytes)', 'sum'),
-            total_Social_Media_UL=('Social Media UL (Bytes)', 'sum'),
-            total_Netflix_DL=('Netflix DL (Bytes)', 'sum'),
-            total_Netflix_UL=('Netflix UL (Bytes)', 'sum'),
-            total_Google_DL=('Google DL (Bytes)', 'sum'),
-            total_Google_UL=('Google UL (Bytes)', 'sum'),
-            total_Email_DL=('Email DL (Bytes)', 'sum'),
-            total_Email_UL=('Email UL (Bytes)', 'sum'),
-            total_Gaming_DL=('Gaming DL (Bytes)', 'sum'),
-            total_Gaming_UL=('Gaming UL (Bytes)', 'sum'),
-            Youtube_Gaming_DL = ('Youtube DL (Bytes)', 'sum'),
-            Youtube_Gaming_UL =('Youtube UL (Bytes)', 'sum')
-        ).reset_index()
-
-        return aggregated_data
-    def plot_insights(self):
-        # Plot total data usage
-        aggregated_data = self.aggregate_user_behavior()
-        plt.figure(figsize=(12, 8))
-        sns.histplot(aggregated_data['total_DL_data'], kde=True, color='blue')
-        plt.title('Distribution of Total Download Data (Bytes)')
-        plt.xlabel('Total Download Data (Bytes)')
-        plt.ylabel('Frequency')
-        plt.show()
-    def plot_insight1(self):
-        aggregated_data = self.aggregate_user_behavior()
-        # Plot total session duration
-        plt.figure(figsize=(12, 8))
-        sns.histplot(aggregated_data['total_session_duration'], kde=True, color='green')
-        plt.title('Distribution of Total Session Duration (ms)')
-        plt.xlabel('Total Session Duration (ms)')
-        plt.ylabel('Frequency')
-        plt.show()
-    def plot_insight3(self):
-        # Plot top sources of data usage
-        aggregated_data = self.aggregate_user_behavior()
-        usage_columns = [
-            'total_Social_Media_DL', 'total_Netflix_DL', 'total_Google_DL', 'total_Email_DL', 'total_Gaming_DL', 'Youtube_Gaming_DL'
-        ]
-        plt.figure(figsize=(14, 8))
-        aggregated_data[usage_columns].sum().sort_values().plot(kind='barh', color='skyblue')
-        plt.title('Total Data Usage by Source (Bytes)')
-        plt.xlabel('Total Data Usage (Bytes)')
-        plt.ylabel('Data Source')
-        plt.show()
-    def plot_insight4(self):
-        aggregated_data = self.aggregate_user_behavior()
-        # Plot number of sessions
-        plt.figure(figsize=(12, 8))
-        sns.histplot(aggregated_data['number_of_xDR_sessions'], kde=True, color='orange')
-        plt.title('Distribution of Number of Sessions per User')
-        plt.xlabel('Number of Sessions')
-        plt.ylabel('Frequency')
-        plt.show()
     def outlier_check(self):
         # Filter for numeric columns
         numeric_df = self.df.select_dtypes(include=[float, int])
@@ -264,11 +175,193 @@ class EDA:
         }).sort_values(by='outlier_percentage', ascending=False)  # Fix typo
         
         return missing_df
-    def stast_some_col(self):
-        print('Mean',self.df['Dur. (ms)'].mean())
-        print('Mode',self.df['Dur. (ms)'].mode())
-        print('median', self.df['Dur. (ms)'].median())
-        print('std',self.df['Dur. (ms)'].std())
+    # Calculate Q1 (25th percentile) and Q3 (75th percentile)
+    def misi_outlier_record(self):
+        self.df.dropna(subset=['IMSI'], inplace=True)
+        imsi_col = self.df['IMSI']
+        Q1 = imsi_col.quantile(0.25)
+        Q3 = imsi_col.quantile(0.75)
+        IQR = Q3 - Q1
+        # Define outlier bounds
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+
+        # Get IMSI values that are considered outliers
+        outliers = imsi_col[(imsi_col < lower_bound) | (imsi_col > upper_bound)]
+
+        # Display the outlier IMSIs
+        imsi_outliers = outliers
+        return imsi_outliers
+    import pandas as pd
+
+# Assuming df is your DataFrame
+    def remove_outliers(self):
+        # Drop rows where 'IMSI' or 'Dur. (ms)' is NaN
+        self.df.dropna(subset=['IMSI', 'Dur. (ms)'], inplace=True)
+
+        # Extract the IMSI column for outlier identification based on another metric
+        imsi_col = self.df['IMSI']
+        duration_col = self.df['Dur. (ms)']
+
+        # Calculate Q1, Q3, and IQR for 'Dur. (ms)' to find outliers
+        Q1 = duration_col.quantile(0.25)
+        Q3 = duration_col.quantile(0.75)
+        IQR = Q3 - Q1
+
+        # Define outlier bounds
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+
+        # Identify outliers in 'Dur. (ms)' column
+        outlier_mask = (duration_col < lower_bound) | (duration_col > upper_bound)
+        outlier_imsi = self.df[outlier_mask]['IMSI']
+
+        # Remove outliers based on IMSI
+        df_cleaned = self.df[~self.df['IMSI'].isin(outlier_imsi)]
+
+        # Display the cleaned DataFrame
+        return df_cleaned
+    def aggregate_user_behavior(self):
+        # Print existing columns for debugging
+        print(self.df.head())  # Print first few rows for debugging
+        
+        # Drop rows with missing values in specific columns
+        self.df.dropna(subset=['Bearer Id', 'Dur. (ms)', 'IMSI'], inplace=True)
+        
+        # Print the DataFrame after dropping missing values
+        print(self.df.head())  # Print first few rows for debugging
+        
+        # Remove outliers
+        self.remove_outliers()
+        
+        # Print the DataFrame after removing outliers
+        print(self.df.head())  # Print first few rows for debugging
+        
+        # Check for missing columns (optional)
+        required_columns = [
+            'IMSI',  # or MSISDN/Number for user identification
+            'Dur. (ms)',
+            'Total DL (Bytes)', 'Total UL (Bytes)',
+            'Social Media DL (Bytes)', 'Social Media UL (Bytes)',
+            'Netflix DL (Bytes)', 'Netflix UL (Bytes)',
+            'Google DL (Bytes)', 'Google UL (Bytes)',
+            'Email DL (Bytes)', 'Email UL (Bytes)',
+            'Gaming DL (Bytes)', 'Gaming UL (Bytes)',
+            'Youtube DL (Bytes)', 'Youtube UL (Bytes)'
+        ]
+        
+        missing_cols = [col for col in required_columns if col not in self.df.columns]
+        if missing_cols:
+            raise ValueError(f"DataFrame is missing required columns: {missing_cols}")
+        
+        # Aggregate data per user
+        aggregated_data = self.df.groupby('IMSI').agg(
+            number_of_xDR_sessions=('Bearer Id', 'nunique'),
+            total_session_duration=('Dur. (ms)', 'sum'),
+            total_DL_data=('Total DL (Bytes)', 'sum'),
+            total_UL_data=('Total UL (Bytes)', 'sum'),
+            total_Social_Media_DL=('Social Media DL (Bytes)', 'sum'),
+            total_Social_Media_UL=('Social Media UL (Bytes)', 'sum'),
+            total_Netflix_DL=('Netflix DL (Bytes)', 'sum'),
+            total_Netflix_UL=('Netflix UL (Bytes)', 'sum'),
+            total_Google_DL=('Google DL (Bytes)', 'sum'),
+            total_Google_UL=('Google UL (Bytes)', 'sum'),
+            total_Email_DL=('Email DL (Bytes)', 'sum'),
+            total_Email_UL=('Email UL (Bytes)', 'sum'),
+            total_Gaming_DL=('Gaming DL (Bytes)', 'sum'),
+            total_Gaming_UL=('Gaming UL (Bytes)', 'sum'),
+            Youtube_Gaming_DL=('Youtube DL (Bytes)', 'sum'),
+            Youtube_Gaming_UL=('Youtube UL (Bytes)', 'sum')
+        ).reset_index()
+        
+        return aggregated_data
+
+    def plot_insights(self):
+        # Plot total data usage
+        aggregated_data = self.aggregate_user_behavior()
+        plt.figure(figsize=(12, 8))
+        sns.histplot(aggregated_data['total_DL_data'], kde=True, color='blue')
+        plt.title('Distribution of Total Download Data (Bytes)')
+        plt.xlabel('Total Download Data (Bytes)')
+        plt.ylabel('Frequency')
+        plt.show()
+    def plot_insight1(self):
+        aggregated_data = self.aggregate_user_behavior()
+        # Plot total session duration
+        plt.figure(figsize=(12, 8))
+        sns.histplot(aggregated_data['total_session_duration'], kde=True, color='green')
+        plt.title('Distribution of Total Session Duration (ms)')
+        plt.xlabel('Total Session Duration (ms)')
+        plt.ylabel('Frequency')
+        plt.show()
+    def plot_insight3(self):
+        # Plot top sources of data usage
+        aggregated_data = self.aggregate_user_behavior()
+        usage_columns = [
+            'total_Social_Media_DL', 'total_Netflix_DL', 'total_Google_DL', 'total_Email_DL', 'total_Gaming_DL', 'Youtube_Gaming_DL'
+        ]
+        plt.figure(figsize=(14, 8))
+        aggregated_data[usage_columns].sum().sort_values().plot(kind='barh', color='skyblue')
+        plt.title('Total Data Usage by Source (Bytes)')
+        plt.xlabel('Total Data Usage (Bytes)')
+        plt.ylabel('Data Source')
+        plt.show()
+    def plot_insight4(self):
+        aggregated_data = self.aggregate_user_behavior()
+        # Plot number of sessions
+        plt.figure(figsize=(12, 8))
+        sns.histplot(aggregated_data['number_of_xDR_sessions'], kde=True, color='orange')
+        plt.title('Distribution of Number of Sessions per User')
+        plt.xlabel('Number of Sessions')
+        plt.ylabel('Frequency')
+        plt.show()
+
+    def stast_some_col1(self):
+        stast_some_col = ([
+        'Dur. (ms)', 
+        'Total DL (Bytes)', 
+        'Total UL (Bytes)', 
+        'Social Media DL (Bytes)', 
+        'Social Media UL (Bytes)', 
+        'Netflix DL (Bytes)', 
+        'Netflix UL (Bytes)', 
+        'Google DL (Bytes)', 
+        'Google UL (Bytes)', 
+        'Email DL (Bytes)'
+    ])
+        # Initialize a dictionary to hold statistics
+        stats = {
+            'Column': [],
+            'Mean': [],
+            'Mode': [],
+            'Median': [],
+            'Std Dev': []
+        }
+        
+        # Iterate over the columns and compute statistics
+        for col in stast_some_col:
+            if col in self.df.columns:
+                stats['Column'].append(col)
+                stats['Mean'].append(self.df[col].mean())
+                mode_value = self.df[col].mode()
+                stats['Mode'].append(mode_value.values[0] if not mode_value.empty else 'No mode')
+                stats['Median'].append(self.df[col].median())
+                stats['Std Dev'].append(self.df[col].std())
+            else:
+                # Handle the case where the column does not exist in the DataFrame
+                stats['Column'].append(col)
+                stats['Mean'].append('Column not found')
+                stats['Mode'].append('Column not found')
+                stats['Median'].append('Column not found')
+                stats['Std Dev'].append('Column not found')
+        
+        # Create a DataFrame from the statistics dictionary
+        stats_df = pd.DataFrame(stats)
+        
+        # Display the table
+        print(stats_df)
+
+   
 
 
 
