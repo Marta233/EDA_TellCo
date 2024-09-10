@@ -1,2 +1,5 @@
 .env
-venv/
+venv/git 
+raw_data.csv
+env
+venv
