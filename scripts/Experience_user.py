@@ -11,11 +11,12 @@ class User_Experience:
     def __init__(self, df: pd.DataFrame):
         self.df = df
         self.engagement_metrics = None
-        
+    
 # Function to handle missing values
     def handle_missing_values(self):
         # For numerical columns, replace missing values with mean
         for col in self.numeric_cols:
+            self.df.dropna(subset=['MSISDN/Number'], inplace=True)
             mean_value = self.df[col].mean()
             self.df[col].fillna(mean_value, inplace=True)
         
@@ -264,40 +265,31 @@ class User_Experience:
         engagement_metrics = self.aggregate_per_customer()
 
         # Ensure the required columns are present
-        required_columns = ['Average TCP Retransmission', 'Average RTT', 'Average Throughput', 'Handset Type']
+        required_columns = ['Average TCP Retransmission', 'Average RTT', 'Average Throughput']
         if not all(col in engagement_metrics.columns for col in required_columns):
             raise ValueError("Some required columns are missing from the DataFrame")
 
         k = 3
         scaler = StandardScaler()
 
-        # One-hot encode the Handset Type
-        df_encoded = pd.get_dummies(engagement_metrics, columns=['Handset Type'], prefix='Handset')
-
         # Standardize the numerical features
         numerical_features = ['Average TCP Retransmission', 'Average RTT', 'Average Throughput']
-        scaled_numerical_data = scaler.fit_transform(df_encoded[numerical_features])
-
-        # Recombine the scaled numerical data with the one-hot encoded categorical data
-        scaled_data = pd.concat([
-            pd.DataFrame(scaled_numerical_data, columns=numerical_features),
-            df_encoded.drop(columns=numerical_features)
-        ], axis=1)
+        scaled_numerical_data = scaler.fit_transform(engagement_metrics[numerical_features])
 
         # Run k-means clustering
         kmeans = KMeans(n_clusters=k, random_state=42)
-        engagement_metrics['cluster'] = kmeans.fit_predict(scaled_data)
-
+        engagement_metrics['cluster'] = kmeans.fit_predict(scaled_numerical_data)
+        # Store the centroids for future use
+        self.experience_centroids = kmeans.cluster_centers_
+        
         self.engagement_metrics = engagement_metrics  # Ensure this is assigned
 
-        print(self.engagement_metrics)
-
-        return self.engagement_metrics, kmeans
+        return self.engagement_metrics
 
 
 
     def describe_clusters(self):
-        df_clustering, _ = self.cluster_user_exp_metrics()  # Unpack the tuple
+        df_clustering = self.cluster_user_exp_metrics()  # No need to unpack, directly assign
         
         # List columns to analyze
         numeric_columns = ['Average TCP Retransmission', 'Average RTT', 'Average Throughput']
@@ -314,21 +306,22 @@ class User_Experience:
             mean_tcp_retransmission=('Average TCP Retransmission', 'mean'),
             max_tcp_retransmission=('Average TCP Retransmission', 'max'),
             min_tcp_retransmission=('Average TCP Retransmission', 'min'),
-            mode_tcp_retransmission=('Average TCP Retransmission', lambda x: pd.Series.mode(x).values[0] if not pd.Series.mode(x).empty else None),
-            
+            mode_tcp_retransmission=('Average TCP Retransmission', lambda x: x.mode().iloc[0] if not x.mode().empty else None),
+
             mean_rtt=('Average RTT', 'mean'),
             max_rtt=('Average RTT', 'max'),
             min_rtt=('Average RTT', 'min'),
-            mode_rtt=('Average RTT', lambda x: pd.Series.mode(x).values[0] if not pd.Series.mode(x).empty else None),
-            
+            mode_rtt=('Average RTT', lambda x: x.mode().iloc[0] if not x.mode().empty else None),
+
             mean_throughput=('Average Throughput', 'mean'),
             max_throughput=('Average Throughput', 'max'),
             min_throughput=('Average Throughput', 'min'),
-            mode_throughput=('Average Throughput', lambda x: pd.Series.mode(x).values[0] if not pd.Series.mode(x).empty else None)
+            mode_throughput=('Average Throughput', lambda x: x.mode().iloc[0] if not x.mode().empty else None)
         )
         
         print(cluster_description)
         return cluster_description
+
 
     def visualize_clusters(self):
         df_clustering, _ = self.cluster_user_exp_metrics()  # Unpack the tuple

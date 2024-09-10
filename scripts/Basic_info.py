@@ -360,6 +360,7 @@ class EDA:
         
         # Display the table
         print(stats_df)
+    
 
    
 

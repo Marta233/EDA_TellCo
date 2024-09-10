@@ -12,7 +12,10 @@ class User_Engagement:
     def remove_outliers(self):
         # Drop rows where 'IMSI', 'MSISDN/Number', or 'Bearer Id' is NaN
         self.df.dropna(subset=['IMSI', 'MSISDN/Number', 'Bearer Id'], inplace=True)
-
+        mean_value = self.df['Total DL (Bytes)'].mean()
+        self.df['Total DL (Bytes)'].fillna(mean_value, inplace=True) 
+        mean_value1 = self.df['Total UL (Bytes)'].mean()
+        self.df['Total UL (Bytes)'].fillna(mean_value1, inplace=True) 
         # First attribute: 'MSISDN/Number' (based on frequency)
         msisdn_freq = self.df['MSISDN/Number'].value_counts()
         Q1_msisdn = msisdn_freq.quantile(0.25)
@@ -36,12 +39,21 @@ class User_Engagement:
         # Remove outliers from DataFrame
         df_cleaned = self.df[~self.df['MSISDN/Number'].isin(msisdn_outliers) & ~self.df['Bearer Id'].isin(bearer_outliers)]
 
-        # Return the cleaned DataFrame
-        return df_cleaned
+        
+    def replace_outliers_with_mean(self):
+        for column in ['Total UL (Bytes)', 'Total DL (Bytes)']:
+            Q1 = self.df[column].quantile(0.25)
+            Q3 = self.df[column].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            mean_value = self.df[column].mean()
+            self.df[column] = self.df[column].apply(lambda x: mean_value if x < lower_bound or x > upper_bound else x)
 
     def calculate_engagement_metrics(self):
         # Remove outliers and drop rows with missing values in key columns
         self.remove_outliers()
+        self.replace_outliers_with_mean()
         
         # Calculate session frequency per user
         session_freq = self.df.groupby('MSISDN/Number').size().reset_index(name='Session Frequency')
@@ -121,39 +133,56 @@ class User_Engagement:
         plt.show()
         
     
-    def k_means_clustering(self):
-        # Ensure engagement metrics are calculated
-        if self.engagement_metrics is None:
-            self.calculate_engagement_metrics()
-        
+    def k_means_clustering(self):     
+     # Get aggregated data
+        engagement_metrics = self.calculate_engagement_metrics()
+
+        # Ensure the required columns are present
+        required_columns = ['Session Frequency', 'Total Duration (ms)', 'Total Traffic (Bytes)']
+        if not all(col in engagement_metrics.columns for col in required_columns):
+            raise ValueError("Some required columns are missing from the DataFrame")
+
         k = 3
         scaler = StandardScaler()
-        metrics = ['Session Frequency', 'Total Duration (ms)', 'Total Traffic (Bytes)']
-        scaled_data = scaler.fit_transform(self.engagement_metrics[metrics])
+
+        # Standardize the numerical features
+        numerical_features = ['Session Frequency', 'Total Duration (ms)', 'Total Traffic (Bytes)']
+        scaled_numerical_data = scaler.fit_transform(engagement_metrics[numerical_features])
 
         # Run k-means clustering
         kmeans = KMeans(n_clusters=k, random_state=42)
-        self.engagement_metrics['cluster'] = kmeans.fit_predict(scaled_data)
-        print(self.engagement_metrics)
-        # Plotting the clusters
-        plt.figure(figsize=(12, 8))
-        sns.scatterplot(
-            x=self.engagement_metrics['Session Frequency'],
-            y=self.engagement_metrics['Total Duration (ms)'],
-            hue=self.engagement_metrics['cluster'],
-            palette='viridis',
-            style=self.engagement_metrics['cluster'],
-            s=100
-        )
+        engagement_metrics['cluster'] = kmeans.fit_predict(scaled_numerical_data)
+        # Store the centroids for future use
+        self.engagement_centroids = kmeans.cluster_centers_
         
-        plt.title('K-Means Clustering of User Engagement Metrics')
-        plt.xlabel('Session Frequency')
-        plt.ylabel('Total Duration (ms)')
-        plt.legend(title='Cluster')
-        plt.grid(True)
+        self.engagement_metrics = engagement_metrics  # Ensure this is assigned
+
+        return self.engagement_metrics
+    def plot_cluster(self):     
+        # Call k_means_clustering to get the data with clusters
+        df_clustering, _ = self.k_means_clustering()  # Unpack the tuple
+        
+        # Plotting the clusters     
+        plt.figure(figsize=(12, 8))     
+        
+        sns.scatterplot(         
+            x=df_clustering['Session Frequency'],         
+            y=df_clustering['Total Duration (ms)'],         
+            hue=df_clustering['cluster'],         
+            palette='viridis',         
+            style=df_clustering['cluster'],         
+            s=100     
+        )              
+        
+        plt.title('K-Means Clustering of User Engagement Metrics')     
+        plt.xlabel('Session Frequency')     
+        plt.ylabel('Total Duration (ms)')     
+        plt.legend(title='Cluster')     
+        plt.grid(True)     
         plt.show()
 
-        return self.engagement_metrics, kmeans
+
+
     
     def compute_cluster_stats(self):
         # Ensure engagement metrics are calculated
